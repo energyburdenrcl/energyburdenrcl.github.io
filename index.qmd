@@ -1,0 +1,322 @@
+---
+about:
+  template: jolla
+  id: about-block
+  #image: "img/my_image.jpg"
+  #links:
+    #- icon: twitter
+      #text: Twitter
+      #href: https://twitter.com/MarvinSchmittML
+    #- icon: github
+      #text: Github
+      #href: https://github.com/marvinschmitt
+    #- icon: linkedin
+      #text: LinkedIn
+      #href: https://www.linkedin.com/in/marvin-schmitt-a85b321a2/
+    #- icon: envelope
+      #text: Email
+      #href: "mailto:mail.marvinschmitt@gmail.com"  
+---
+
+::: {#about-block}
+:::
+
+# Energy Burden Maps
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(tidycensus)
+library(tidyverse)
+library(sf)
+library(gt)
+library(tigris)
+library(scales)
+library(mapview)
+library(readxl)
+library(ggmap)
+
+places <- st_read("data/cb_2019_us_place_500k/cb_2019_us_place_500k.shp")
+
+##
+#Data Cleaning & Spatialization
+##
+
+clean_data <- read_excel("data/Clean Data.xlsx", sheet = 1, col_names = TRUE)
+
+clean_data <- clean_data[1:19199,]
+
+for (j in 1:nrow(clean_data)) {
+  for (i in 1:nrow(places)) {
+    if (grepl(as.double(places$GEOID[i]),clean_data$`Geography ID`[j])) {
+      clean_data$geometry[j] <- places$geometry[i]
+    }
+  }
+}
+
+clean_data <- clean_data |> st_as_sf(sf_column_name = "geometry")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+##
+#Selected Variables
+##
+
+#energy burden
+
+energy_burden <- clean_data |> select(`Geography ID`,Name,`Avg. Energy Burden (% income)`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, pct = `Avg. Energy Burden (% income)`, geometry = geometry) |> select(GEOID,NAME,pct,geometry)
+
+energy_burden <- na.omit(energy_burden)
+
+st_crs(energy_burden) <- 4326
+
+#mapviewOptions(default = TRUE)
+
+#mapview(energy_burden, zcol = "pct")
+
+##
+#energy burden (alternate)
+
+burden2 <- clean_data |> select(`Geography ID`,Name,`4`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, pct = `4`, geometry = geometry) |> select(GEOID,NAME,pct,geometry)
+
+burden2 <- na.omit(burden2)
+
+st_crs(burden2) <- 4326
+
+#mapviewOptions(default = TRUE)
+
+#mapview(burden2, zcol = "pct")
+
+
+##
+#total population
+
+tot_pop <- clean_data |> select(`Geography ID`,Name,`2019_TOTAL POP2`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, pop = `2019_TOTAL POP2`, geometry = geometry) |> select(GEOID,NAME,pop,geometry)
+
+tot_pop <- na.omit(tot_pop)
+
+st_crs(tot_pop) <- 4326
+
+#mapview(tot_pop, zcol = "pop")
+
+##
+#high school education
+
+highschool <- clean_data |> select(`Geography ID`,Name,`2019_HIGHSCHOOL EDU`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, edu = `2019_HIGHSCHOOL EDU`, geometry = geometry) |> select(GEOID,NAME,edu,geometry)
+
+highschool <- na.omit(highschool)
+
+st_crs(highschool) <- 4326
+
+#mapview(highschool, zcol = "edu")
+
+##
+#has computer
+
+computer <- clean_data |> select(`Geography ID`,Name,`2019_HAS_COMPUTER`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, comp = `2019_HAS_COMPUTER`, geometry = geometry) |> select(GEOID,NAME,comp,geometry)
+
+computer <- na.omit(computer)
+
+st_crs(computer) <- 4326
+
+#mapview(computer, zcol = "comp")
+
+##
+#heating utility bottled
+
+heating <- clean_data |> select(`Geography ID`,Name,`2019_HEATING_UTILITY_BOTTLED`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, bott = `2019_HEATING_UTILITY_BOTTLED`, geometry = geometry) |> select(GEOID,NAME,bott,geometry)
+
+heating <- na.omit(heating)
+
+st_crs(heating) <- 4326
+
+#mapview(heating, zcol = "bott")
+
+##
+#houses built in 1939 or earlier
+
+house1939 <- clean_data |> select(`Geography ID`,Name,`2019_BUILT_1939_EARLIER`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, house = `2019_BUILT_1939_EARLIER`, geometry = geometry) |> select(GEOID,NAME,house,geometry)
+
+house1939 <- na.omit(house1939)
+
+st_crs(house1939) <- 4326
+
+#mapview(house1939, zcol = "house")
+
+##
+#one person households
+
+oneperson <- clean_data |> select(`Geography ID`,Name,`2019_ONE_PERSON_HOUSEHOLD`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, singlehouse = `2019_ONE_PERSON_HOUSEHOLD`, geometry = geometry) |> select(GEOID,NAME,singlehouse,geometry)
+
+oneperson <- na.omit(oneperson)
+
+st_crs(oneperson) <- 4326
+
+#mapview(oneperson, zcol = "singlehouse")
+
+##
+#median wind speed
+
+medwind <- clean_data |> select(`Geography ID`,Name,`median_wind_speed`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, windspeed = `median_wind_speed`, geometry = geometry) |> select(GEOID,NAME,windspeed,geometry)
+
+medwind <- na.omit(medwind)
+
+st_crs(medwind) <- 4326
+
+#mapview(medwind, zcol = "windspeed")
+
+##
+#average retail energy price
+
+energyprice <- clean_data |> select(`Geography ID`,Name,`average_retail_energy_price`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, price = `average_retail_energy_price`, geometry = geometry) |> select(GEOID,NAME,price,geometry)
+
+energyprice <- na.omit(energyprice)
+
+st_crs(energyprice) <- 4326
+
+#mapview(energyprice, zcol = "price")
+
+##
+#internet in household
+
+internet <- clean_data |> select(`Geography ID`,Name,`2019_INTERNET_IN_HOUSEHOLD`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, net = `2019_INTERNET_IN_HOUSEHOLD`, geometry = geometry) |> select(GEOID,NAME,net,geometry)
+
+internet <- na.omit(internet)
+
+st_crs(internet) <- 4326
+
+#mapview(internet, zcol = "net")
+
+##
+#no internet
+
+nointernet <- clean_data |> select(`Geography ID`,Name,`2019_NO_INTERNET`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, net = `2019_NO_INTERNET`, geometry = geometry) |> select(GEOID,NAME,net,geometry)
+
+nointernet <- na.omit(nointernet)
+
+st_crs(nointernet) <- 4326
+
+#mapview(nointernet, zcol = "net")
+
+##
+#bachelor's education
+
+bachelors <- clean_data |> select(`Geography ID`,Name,`2019_BACHELORS EDU`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, edu = `2019_BACHELORS EDU`, geometry = geometry) |> select(GEOID,NAME,edu,geometry)
+
+bachelors <- na.omit(bachelors)
+
+st_crs(bachelors) <- 4326
+
+#mapview(bachelors, zcol = "edu")
+
+##
+#households
+
+households <- clean_data |> select(`Geography ID`,Name,`2019_HOUSEHOLDS`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, houses = `2019_HOUSEHOLDS`, geometry = geometry) |> select(GEOID,NAME,houses,geometry)
+
+households <- na.omit(households)
+
+st_crs(households) <- 4326
+
+#mapview(households, zcol = "houses")
+
+##
+#median temperature
+
+medtemp <- clean_data |> select(`Geography ID`,Name,`median_temperature`, geometry) |> mutate(GEOID = `Geography ID`, NAME = Name, temps = `median_temperature`, geometry = geometry) |> select(GEOID,NAME,temps,geometry)
+
+medtemp <- na.omit(medtemp)
+
+st_crs(medtemp) <- 4326
+
+#mapview(medtemp, zcol = "temps")
+```
+
+Comparison Map - Energy Burden & Total Population
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(tot_pop, zcol = "pop", layer.name = "Total Population")
+```
+
+Comparison Map - Energy Burden & High School Education
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(highschool, zcol = "edu", layer.name = "High School Education")
+```
+
+Comparison Map - Energy Burden & Has Computer
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(computer, zcol = "comp", layer.name = "Has Computer")
+```
+
+Comparison Map - Energy Burden & Heating Utility Bottled
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}  
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(heating, zcol = "bott", layer.name = "Heating Utility Bottled")
+```
+
+Comparison Map - Energy Burden & Houses Built in 1939 or Earlier
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}    
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(house1939, zcol = "house", "Houses 1939 or Earlier")
+```
+
+Comparison Map - Energy Burden & One-Person Households
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}      
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(oneperson, zcol = "singlehouse", layer.name = "One-Person Households")
+```
+
+Comparison Map - Energy Burden & Median Wind Speed
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}        
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(medwind, zcol = "windspeed", layer.name = "Wind Speed")
+```
+
+Comparison Map - Energy Burden & Average Retail Energy Price
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}          
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(energyprice, zcol = "price", layer.name = "Energy Price")
+```
+
+Comparison Map - Energy Burden & Internet in Household
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}    
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(internet, zcol = "net", layer.name = "Internet")
+```
+
+Comparison Map - Energy Burden & No Internet
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}      
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(nointernet, zcol = "net", layer.name = "No Internet")
+```
+
+Comparison Map - Energy Burden & Bachelor's Education
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}        
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(bachelors, zcol = "edu", layer.name = "Bachelor's Degree")
+```
+
+Comparison Map - Energy Burden & Number of Households
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}          
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(households, zcol = "houses", layer.name = "Households")
+```
+
+Comparison Map - Energy Burden & Median Temperature
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}            
+
+mapview(burden2, zcol = "pct", layer.name = "Energy Burden") + mapview(medtemp, zcol = "temps", layer.name = "Temperature")
+```
